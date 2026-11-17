@@ -14,6 +14,7 @@ from . import (
     SocketAddr,
     StatusCode,
     Streamer,
+    Timings,
     Version,
     WebSocketRequest,
 )
@@ -77,6 +78,11 @@ class Response:
     tls_info: TlsInfo | None
     r"""
     Get the TLS information of the response.
+    """
+
+    timings: Timings
+    r"""
+    Get the timings of the request.
     """
 
     def raise_for_status(self) -> None:
@@ -161,6 +167,11 @@ class WebSocket:
     local_addr: SocketAddr | None
     r"""
     Get the local address of the response.
+    """
+
+    timings: Timings
+    r"""
+    Get the timings of the request.
     """
 
     protocol: str | None

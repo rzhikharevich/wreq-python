@@ -3,7 +3,7 @@ pub mod msg;
 
 use std::{
     fmt::{self, Display},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use msg::Message;
@@ -18,6 +18,7 @@ use crate::{
     header::HeaderMap,
     http::{StatusCode, Version},
     runtime::Runtime,
+    timings::Timings,
 };
 
 /// A WebSocket response.
@@ -39,6 +40,10 @@ pub struct WebSocket {
     #[pyo3(get)]
     local_addr: Option<SocketAddr>,
 
+    /// Returns the timings of the request.
+    #[pyo3(get)]
+    timings: Timings,
+
     /// Returns the headers of the response.
     #[pyo3(get)]
     headers: HeaderMap,
@@ -54,8 +59,13 @@ pub struct BlockingWebSocket(WebSocket);
 // ===== impl WebSocket =====
 
 impl WebSocket {
-    /// Creates a new [`WebSocket`] instance.
-    pub async fn new(response: WebSocketResponse, runtime: Runtime) -> wreq::Result<WebSocket> {
+    /// Creates a new [`WebSocket`] instance for a request that started at `request_start`.
+    pub async fn new(
+        response: WebSocketResponse,
+        request_start: Instant,
+        runtime: Runtime,
+    ) -> wreq::Result<WebSocket> {
+        let timings = Timings::new(request_start, response.extensions());
         let (version, status, remote_addr, local_addr, headers) = (
             Version::from_ffi(response.version()),
             StatusCode(response.status()),
@@ -73,6 +83,7 @@ impl WebSocket {
             status,
             remote_addr,
             local_addr,
+            timings,
             headers,
             protocol,
             cmd,
@@ -231,6 +242,12 @@ impl BlockingWebSocket {
     #[getter]
     pub fn local_addr(&self) -> Option<SocketAddr> {
         self.0.local_addr
+    }
+
+    /// Returns the timings of the request.
+    #[getter]
+    pub fn timings(&self) -> Timings {
+        self.0.timings
     }
 
     /// Returns the WebSocket protocol.

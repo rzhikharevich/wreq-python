@@ -2,7 +2,7 @@ use std::{
     future::Future,
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     pin::{Pin, pin},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use derive_deftly::Deftly;
@@ -314,6 +314,7 @@ where
         }
 
         // Send request.
+        let request_start = Instant::now();
         builder
             .send()
             .await
@@ -324,7 +325,7 @@ where
                     Ok(r)
                 }
             })
-            .map(|response| Response::new(response, client.runtime.clone()))
+            .map(|response| Response::new(response, request_start, client.runtime.clone()))
             .map_err(Error::Library)
             .map_err(Into::into)
     });
@@ -455,9 +456,10 @@ where
         }
 
         // Send the WebSocket request.
+        let request_start = Instant::now();
         builder
             .send()
-            .and_then(|response| WebSocket::new(response, client.runtime.clone()))
+            .and_then(|response| WebSocket::new(response, request_start, client.runtime.clone()))
             .await
             .map_err(Error::Library)
             .map_err(Into::into)

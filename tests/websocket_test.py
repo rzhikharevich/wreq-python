@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import datetime
 import hashlib
 import struct
 import threading
@@ -78,6 +79,49 @@ async def test_websocket_close_frame(code, reason, expected):
     finally:
         server.close()
         await server.wait_closed()
+
+
+@pytest.fixture
+def websocket_url():
+    frames = asyncio.Queue()
+    loop = asyncio.new_event_loop()
+    server = loop.run_until_complete(
+        asyncio.start_server(lambda r, w: serve(r, w, frames), "127.0.0.1", 0)
+    )
+    thread = threading.Thread(target=loop.run_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"ws://127.0.0.1:{server.sockets[0].getsockname()[1]}/"
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(5)
+        server.close()
+        loop.run_until_complete(asyncio.wait_for(server.wait_closed(), 5))
+        loop.close()
+
+
+def assert_waited_for_own_connection(timings):
+    assert datetime.timedelta() < timings.connection_setup
+    assert timings.connection_setup <= timings.connection_wait
+    assert timings.connection_wait <= timings.time_to_headers
+
+
+@pytest.mark.asyncio
+async def test_websocket_timings(websocket_url):
+    async with wreq.Client(proxies=[]) as client:
+        async with client.websocket(websocket_url) as ws:
+            timings = ws.timings
+            await ws.close()
+
+    assert_waited_for_own_connection(timings)
+
+
+def test_blocking_websocket_timings(websocket_url):
+    with wreq.blocking.Client(proxies=[]).websocket(websocket_url) as ws:
+        timings = ws.timings
+        ws.close()
+
+    assert_waited_for_own_connection(timings)
 
 
 def test_blocking_websocket_exit_after_close():

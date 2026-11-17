@@ -35,7 +35,7 @@ use crate::{
     http2::Http2Options,
     macros::reject_unknown_kwargs,
     proxy::Proxy,
-    redirect, runtime,
+    redirect, runtime, timings,
     tls::{Identity, KeyLog, TlsOptions, TlsVerify, TlsVersion},
 };
 
@@ -276,11 +276,16 @@ impl Client {
     }
 }
 
+/// A client builder with [`timings::ConnectLayer`] installed.
+fn builder() -> wreq::ClientBuilder {
+    wreq::Client::builder().connector_layer(timings::ConnectLayer)
+}
+
 impl Default for Client {
     fn default() -> Self {
         let runtime = runtime::Runtime::shared();
         Self {
-            inner: wreq::Client::default(),
+            inner: builder().build().expect("the default configuration builds"),
             runtime: runtime.clone(),
             cancel: CancellationToken::new(),
             raise_for_status: false,
@@ -298,7 +303,7 @@ impl Client {
                 None => runtime::Runtime::shared().clone(),
             };
             // Create the client builder.
-            let mut builder = wreq::Client::builder();
+            let mut builder = builder();
             let mut cookie_jar: Option<Jar> = None;
             let mut raise_for_status = false;
 

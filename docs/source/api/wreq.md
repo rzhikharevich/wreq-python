@@ -39,6 +39,10 @@ The main `wreq` module contains core classes and types used throughout the libra
     options:
       show_root_heading: true
 
+::: wreq.Timings
+    options:
+      show_root_heading: true
+
 ## WebSocket
 
 ::: wreq.WebSocket

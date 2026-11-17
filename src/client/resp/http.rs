@@ -3,6 +3,7 @@ use std::{
     future::Future,
     mem,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
+    time::Instant,
 };
 
 use bytes::Bytes;
@@ -24,6 +25,7 @@ use crate::{
     http::{StatusCode, Version},
     redirect::History,
     runtime::Runtime,
+    timings::Timings,
     tls::TlsInfo,
 };
 
@@ -46,6 +48,7 @@ pub struct Response {
     content_length: Option<u64>,
     remote_addr: Option<SocketAddr>,
     local_addr: Option<SocketAddr>,
+    timings: Timings,
 }
 
 /// The response body slot.
@@ -81,8 +84,9 @@ struct RecycleGuard(Option<Parts>);
 // ===== impl Response =====
 
 impl Response {
-    /// Create a new [`Response`] instance.
-    pub fn new(response: wreq::Response, runtime: Runtime) -> Self {
+    /// Create a new [`Response`] instance for a request that started at `request_start`.
+    pub fn new(response: wreq::Response, request_start: Instant, runtime: Runtime) -> Self {
+        let timings = Timings::new(request_start, response.extensions());
         let uri = response.uri().clone();
         let content_length = response.content_length();
         let remote_addr = response.remote_addr().map(SocketAddr);
@@ -96,6 +100,7 @@ impl Response {
             content_length,
             remote_addr,
             local_addr,
+            timings,
         }
     }
 
@@ -311,6 +316,12 @@ impl Response {
     #[getter]
     pub fn local_addr(&self) -> Option<SocketAddr> {
         self.local_addr
+    }
+
+    /// Get the timings of the request.
+    #[getter]
+    pub fn timings(&self) -> Timings {
+        self.timings
     }
 
     /// Get the redirect history of the Response.
@@ -546,6 +557,12 @@ impl BlockingResponse {
     #[getter]
     pub fn local_addr(&self) -> Option<SocketAddr> {
         self.0.local_addr()
+    }
+
+    /// Get the timings of the request.
+    #[getter]
+    pub fn timings(&self) -> Timings {
+        self.0.timings()
     }
 
     /// Get the redirect history of the Response.

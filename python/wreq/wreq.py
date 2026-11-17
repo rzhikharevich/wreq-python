@@ -129,6 +129,48 @@ class SocketAddr:
 
 
 @final
+class Timings:
+    r"""
+    Durations measured for one request.
+
+    A request that fails has no response, so it has no timings.
+
+    A request that takes a connection from the pool does not wait, so its
+    `connection_wait` is zero. Its `connection_setup` repeats the original
+    setup time of that connection.
+
+    A request can also get a connection that another request started. It waits
+    only for the rest of the setup, so its `connection_wait` is shorter than
+    its `connection_setup`.
+
+    `connection_wait` excludes time spent waiting for a busy connection to
+    become free.
+
+    If the client follows redirects, `connection_wait` and `time_to_headers`
+    are measured from the start of the first request. `connection_setup`
+    belongs to the connection that delivered the final response.
+    """
+
+    connection_wait: datetime.timedelta
+    r"""
+    How long the request waited for the client to set up the connection. Zero
+    if the connection was ready before the request started.
+    """
+
+    connection_setup: datetime.timedelta
+    r"""
+    How long the client took to set up the connection that delivered the
+    response. The setup includes name resolution, the TCP handshake, the proxy
+    handshake and the TLS handshake.
+    """
+
+    time_to_headers: datetime.timedelta
+    r"""
+    The time from the start of the request until the response headers arrived.
+    """
+
+
+@final
 class Multipart:
     r"""
     A multipart form for a request.
@@ -417,6 +459,11 @@ class Response:
     Get the TLS information of the response.
     """
 
+    timings: Timings
+    r"""
+    Get the timings of the request.
+    """
+
     def raise_for_status(self) -> None:
         r"""
         Turn a response into an error if the server returned an error.
@@ -499,6 +546,11 @@ class WebSocket:
     local_addr: SocketAddr | None
     r"""
     Get the local address of the response.
+    """
+
+    timings: Timings
+    r"""
+    Get the timings of the request.
     """
 
     protocol: str | None

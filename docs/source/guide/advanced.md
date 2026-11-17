@@ -153,6 +153,42 @@ Use [Http1Options](../api/http1.md), [Http2Options](../api/http2.md) and
 [TlsOptions](../api/tls.md) for individual protocol settings, or an
 [emulation profile](emulation.md) for a coordinated browser configuration.
 
+## Request timings
+
+`response.timings` reports three durations: the wait for a connection, the
+setup time of that connection, and the time until the response headers
+arrived.
+
+```python
+import asyncio
+
+from wreq import Client
+
+
+async def main():
+    async with Client() as client:
+        for _ in range(2):
+            async with client.get("https://httpbin.io/get") as response:
+                await response.bytes()
+                timings = response.timings
+                print("connection wait: ", timings.connection_wait)
+                print("connection setup:", timings.connection_setup)
+                print("time to headers: ", timings.time_to_headers)
+
+
+asyncio.run(main())
+```
+
+Each value is a `datetime.timedelta`. The connection setup includes name
+resolution, the TCP handshake, the proxy handshake and the TLS handshake.
+
+The second request above reuses the connection of the first, so its
+`connection_wait` is zero and its `connection_setup` equals that of the first
+request.
+
+A request that fails has no response, so it has no timings. See the
+[Timings reference](../api/wreq.md#wreq.Timings) for details.
+
 ## Header case and order
 
 `headers` supplies values. `orig_headers` supplies HTTP/1 header spelling and

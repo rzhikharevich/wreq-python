@@ -20,6 +20,7 @@ mod http2;
 mod proxy;
 mod redirect;
 mod runtime;
+mod timings;
 mod tls;
 
 use client::{
@@ -333,6 +334,7 @@ fn wreq(py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Streamer>()?;
     m.add_class::<Method>()?;
     m.add_class::<Version>()?;
+    m.add_class::<timings::Timings>()?;
 
     m.add_function(wrap_pyfunction!(get, m)?)?;
     m.add_function(wrap_pyfunction!(post, m)?)?;
